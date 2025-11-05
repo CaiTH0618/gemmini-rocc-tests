@@ -76,7 +76,8 @@ int main() {
                 printf("%lu, ", c);
             }
         }
-        printf("\navg: %lu, min: %lu, max: %lu\n\n", c_total / num, c_min, c_max);
+        printf("\nnum: %lu, avg: %lu, min: %lu, max: %lu\n\n", 
+            num, c_total / num, c_min, c_max);
     }
 
     for (int i = 0; i < 5; i++) {
@@ -100,7 +101,8 @@ int main() {
                 printf("%lu, ", c);
             }
         }
-        printf("\navg: %lu, min: %lu, max: %lu\n\n", c_total / num, c_min, c_max);
+        printf("\nnum: %lu, avg: %lu, min: %lu, max: %lu\n\n", 
+            num, c_total / num, c_min, c_max);
     }
     
     printf("default_mbus_spad ends\n\n");
