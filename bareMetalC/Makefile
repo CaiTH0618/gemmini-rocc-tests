@@ -1,6 +1,7 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	spad \
 	mvin_mvout \
 	mvin_mvout_zeros \
 	mvin_mvout_stride \
@@ -112,7 +113,8 @@ CFLAGS_BAREMETAL := \
 
 all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
-vpath %.c $(src_dir)
+# vpath %.c $(src_dir)
+vpath %.c $(src_dir) $(src_dir)/learn-gemmini
 
 %-baremetal: %.c $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
