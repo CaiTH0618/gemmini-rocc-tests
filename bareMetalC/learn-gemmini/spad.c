@@ -9,8 +9,7 @@
 
 // #define SPAD_ADDR_BASE 0x08000000U  // mbus scratchpad in `GemminiLearningConfigWithScratchpad`
 #define SPAD_ADDR_BASE 0xC0000000U  // sbus scratchpad in `GemminiLearningConfigWithScratchpad`
-// #define SPAD_ADDR_SIZE 0x00010000U  // default Scrachpad size in `AbstractConfig`
-#define SPAD_ADDR_SIZE 0x00100000U  // bigger Scratchpad size in `GemminiLearningConfigWithScratchpad`
+#define SPAD_ADDR_SIZE 0x00100000U  // Scratchpad size in `GemminiLearningConfigWithScratchpad`
 #define SPAD_ADDR_CEIL (SPAD_ADDR_BASE + SPAD_ADDR_SIZE)
 
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
@@ -42,7 +41,7 @@ static inline uint64_t read_spad_uint64(uint64_t addr) {
 
 
 int main() {
-    printf("\ndefault_mbus_spad starts\n");
+    printf("\nspad starts\n");
 
     const uint64_t test_spad_addr_size = 0x00100000U;  // 1MB 
     // const uint64_t test_spad_addr_size = 0x00010000U;  // 64KB
@@ -105,6 +104,6 @@ int main() {
             num, c_total / num, c_min, c_max);
     }
     
-    printf("default_mbus_spad ends\n\n");
+    printf("spad ends\n\n");
     return 0;
 }

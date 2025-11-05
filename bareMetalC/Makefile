@@ -2,6 +2,7 @@ include $(abs_top_srcdir)/Makefrag
 
 tests = \
 	spad \
+	bw_test \
 	mvin_mvout \
 	mvin_mvout_zeros \
 	mvin_mvout_stride \
