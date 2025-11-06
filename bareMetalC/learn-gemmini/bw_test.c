@@ -26,8 +26,6 @@ static uint64_t mem_buf_head_addr = (uint64_t) mem_buf;
 #define MEM_ADDR_SIZE (MEM_BUF_SIZE * sizeof(uint64_t))
 #define MEM_ADDR_CEIL (MEM_ADDR_BASE + MEM_ADDR_SIZE)
 
-#define MIN(a,b) (((a) < (b)) ? (a) : (b))
-#define MAX(a,b) (((a) > (b)) ? (a) : (b))
 
 static inline uint64_t read_cycles() {
     uint64_t cycles;
