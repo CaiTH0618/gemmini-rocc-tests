@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdalign.h>
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
@@ -19,7 +20,7 @@
 #define MBUS_SPAD_ADDR_CEIL (MBUS_SPAD_ADDR_BASE + MBUS_SPAD_ADDR_SIZE)
 
 #define MEM_BUF_SIZE (ADDR_SIZE / sizeof(uint64_t))
-static uint64_t mem_buf[MEM_BUF_SIZE];
+static alignas(64) uint64_t mem_buf[MEM_BUF_SIZE];
 static uint64_t mem_buf_head_addr = (uint64_t) mem_buf;
 
 #define MEM_ADDR_BASE mem_buf_head_addr
@@ -31,6 +32,17 @@ static uint64_t mem_buf_head_addr = (uint64_t) mem_buf;
 // #define PTR_CHASING_UNIT 0x100
 #define PTR_CHASING_N_UINT64_PER_UNIT (PTR_CHASING_UNIT / sizeof(uint64_t))
 #define PTR_CHASING_BUF_SIZE (ADDR_SIZE / PTR_CHASING_UNIT)
+
+
+const uint64_t chase_rounds = 1;
+// const uint64_t chase_rounds = 5;
+// const uint64_t chase_rounds = 10;
+// const uint64_t chases_per_round = 100;
+// const uint64_t chases_per_round = 1000;
+const uint64_t chases_per_round = 10000;
+// const uint64_t chases_per_round = 100000;
+const uint64_t repeat = 1;
+// const uint64_t repeat = 5;
 
 
 static inline uint64_t read_cycles() {
@@ -62,9 +74,12 @@ static inline uint32_t rand_with_range(uint32_t low, uint32_t high) {
 uint64_t latency_test(uint64_t addr_base, uint64_t addr_ceil) {
     printf("latency_test: starts\n");
 
-    // Calculate the number of 64-bit words in the memory region
     if (addr_ceil - addr_base != ADDR_SIZE) {
         printf("latency_test: error: address region is incorrect\n");
+        return 0;
+    }
+    if (PTR_CHASING_BUF_SIZE < chases_per_round) {
+        printf("latency_test: error: region is too small\n");
         return 0;
     }
 
@@ -79,17 +94,6 @@ uint64_t latency_test(uint64_t addr_base, uint64_t addr_ceil) {
         uint32_t offset = rand_with_range(0, PTR_CHASING_N_UINT64_PER_UNIT);
         // Store index into uint64_t array (not byte offset)
         index_buffer[i] = i * PTR_CHASING_N_UINT64_PER_UNIT + offset;
-    }
-
-    // Run multiple rounds and average the results for stability
-    const uint64_t chase_rounds = 5;
-    // const uint64_t chase_rounds = 10;
-    // const uint64_t chases_per_round = 100;
-    // const uint64_t chases_per_round = 1000;
-    const uint64_t chases_per_round = 10000;
-    if (PTR_CHASING_BUF_SIZE < chases_per_round) {
-        printf("latency_test: error: region is too small\n");
-        return 0;
     }
 
     uint64_t accumulated_latency = 0;
@@ -126,9 +130,11 @@ uint64_t latency_test(uint64_t addr_base, uint64_t addr_ceil) {
         uint64_t start = read_cycles();
         // Chase through all locations in the chain
         // Each iteration depends on the previous load completing
-        for (uint64_t step = 0; step < chases_per_round; ++step) {
-            // Dereference to get the next address in the chain
-            current_ptr = (volatile uint64_t *)(*current_ptr);
+        for (uint64_t i = 0; i < repeat; i++) {
+            for (uint64_t step = 0; step < chases_per_round; ++step) {
+                // Dereference to get the next address in the chain
+                current_ptr = (volatile uint64_t *)(*current_ptr);
+            }
         }
         uint64_t end = read_cycles();
         fence_rw_rw();
@@ -137,12 +143,12 @@ uint64_t latency_test(uint64_t addr_base, uint64_t addr_ceil) {
         uint64_t elapsed = end - start;
         accumulated_latency += elapsed;
         printf("latency_test: latency: %lu * 0.001 cycles\n", 
-            (elapsed * 1000) / chases_per_round);
+            (elapsed * 1000) / (chases_per_round * repeat));
     }
 
     printf("latency_test: ends\n");
     // Return the average latency across all rounds (in units of 0.001 cycles)
-    return (accumulated_latency * 1000) / (chase_rounds * chases_per_round);
+    return (accumulated_latency * 1000) / (chase_rounds * chases_per_round * repeat);
 }
 
 

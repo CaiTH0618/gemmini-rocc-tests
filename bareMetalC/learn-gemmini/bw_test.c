@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdalign.h>
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
@@ -19,12 +20,16 @@
 #define MBUS_SPAD_ADDR_CEIL (MBUS_SPAD_ADDR_BASE + MBUS_SPAD_ADDR_SIZE)
 
 #define MEM_BUF_SIZE (ADDR_SIZE / sizeof(uint64_t))
-static uint64_t mem_buf[MEM_BUF_SIZE];
+static alignas(64) uint64_t mem_buf[MEM_BUF_SIZE];
 static uint64_t mem_buf_head_addr = (uint64_t) mem_buf;
 
 #define MEM_ADDR_BASE mem_buf_head_addr
 #define MEM_ADDR_SIZE (MEM_BUF_SIZE * sizeof(uint64_t))
 #define MEM_ADDR_CEIL (MEM_ADDR_BASE + MEM_ADDR_SIZE)
+
+
+const uint32_t warmup_iterations = 1;
+const uint32_t test_iterations = 3;
 
 
 static inline uint64_t read_cycles() {
@@ -78,16 +83,16 @@ uint64_t bw_test(uint64_t addr_base, uint64_t addr_ceil) {
     uint64_t word_count = buffer_bytes / sizeof(uint64_t);
     uint64_t *wsrc = (uint64_t *)buf1;
     uint64_t *wdst = (uint64_t *)buf2;
+    printf("bw_test: filling memory\n");
     for (uint64_t i = 0; i < word_count; ++i) {
         wsrc[i] = 0x0123456789ABCDEFULL ^ i;
         wdst[i] = 0;
     }
 
-    const uint32_t iterations = 10;
     uint64_t total_cycles = 0;
-
-    for (uint32_t iter = 0; iter < iterations; ++iter) {
-        printf("bw_test: iteration %lu/%lu\n", iter + 1, iterations);
+    uint64_t total_interations = warmup_iterations + test_iterations;
+    for (uint32_t iter = 0; iter < total_interations; ++iter) {
+        printf("bw_test: iteration %lu/%lu\n", iter + 1, total_interations);
         fence_rw_rw();
         uint64_t copy_start = read_cycles();
 
@@ -114,7 +119,9 @@ uint64_t bw_test(uint64_t addr_base, uint64_t addr_ceil) {
         fence_rw_rw();
         uint64_t copy_end = read_cycles();
         uint64_t cycles = copy_end - copy_start;
-        total_cycles += cycles;
+        if (iter >= warmup_iterations) {
+            total_cycles += cycles;
+        }
         uint64_t scaled_bw = (1000 * (buffer_bytes * 2)) / cycles;
         printf("bw_test: %lu * 0.001 bytes/cycle\n", scaled_bw);
     }
@@ -127,7 +134,7 @@ uint64_t bw_test(uint64_t addr_base, uint64_t addr_ceil) {
         return 0;
     }
 
-    uint64_t scaled_bytes_per_cycle = (1000 * (buffer_bytes * 2 * iterations)) / total_cycles;
+    uint64_t scaled_bytes_per_cycle = (1000 * (buffer_bytes * 2 * test_iterations)) / total_cycles;
 
     printf("bw_test: ends\n");
     return scaled_bytes_per_cycle;
