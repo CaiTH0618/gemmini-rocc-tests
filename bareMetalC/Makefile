@@ -1,10 +1,11 @@
 include $(abs_top_srcdir)/Makefrag
 
 tests = \
+	template \
 	spad \
 	bw_test \
 	latency_test \
-	template \
+	mt_hello \
 # 	mvin_mvout \
 # 	mvin_mvout_zeros \
 # 	mvin_mvout_stride \
@@ -77,7 +78,12 @@ else
 	tests_pk = $(tests:=-pk)
 endif
 
-BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
+# CTH: Copied `riscv-tests/benchmarks/common` to 
+#      `riscv-tests-benchmarks-common` under the folder of this script. 
+#      Modified the `crt.S` to correctly support multiple threads.
+# BENCH_COMMON = $(abs_top_srcdir)/riscv-tests/benchmarks/common
+BENCH_COMMON = $(abs_top_srcdir)/riscv-tests-benchmarks-common
+
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
 
 CFLAGS := $(CFLAGS) \
@@ -99,6 +105,8 @@ CFLAGS := $(CFLAGS) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
 	-DPRINT_TILE=0 \
+	-DNUM_CORES=4 \
+# TODO: NUM_CORES
 
 CFLAGS_PK := \
 	$(CFLAGS) \
@@ -115,8 +123,7 @@ CFLAGS_BAREMETAL := \
 
 all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
-# vpath %.c $(src_dir)
-vpath %.c $(src_dir) $(src_dir)/learn-gemmini
+vpath %.c $(src_dir)
 
 %-baremetal: %.c $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
