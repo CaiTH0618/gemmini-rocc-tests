@@ -4,41 +4,46 @@
 #include <stdint.h>
 #include <stdio.h>
 
+
 #ifndef NUM_CORES
-#define NUM_CORES 4
-#endif
+#warning `NUM_CORES` is not set explicitly. Default to 1.
+#define NUM_CORES 1
+#endif 
 
 
-void func(int cid) {
-    uint32_t hart = read_csr(mhartid);
-    for (int j = 0; j < NUM_CORES; j++) {
-        if (hart == j) {
-            printf("Hello world! cid=%d, hart=%u\n", cid, hart);
-        }
-        barrier(NUM_CORES);
-    }
+static inline uint32_t get_hart_id() {
+    return read_csr(mhartid);
 }
 
+
+void func(int cid, int nc) {
+    uint32_t hart = get_hart_id();
+    for (int j = 0; j < nc; j++) {
+        if (cid == j) {
+            printf("Hello world! cid=%d, hart=%u, nc=%d\n", cid, hart, nc);
+        }
+        barrier(nc);
+    }
+}
 
 void thread_entry(int cid, int nc) {
-    for (int j = 0; j < NUM_CORES; j++) {
-        if (cid == j) {
-            printf("cid=%d, nc=%d\n", cid, nc);
-        }
-        barrier(NUM_CORES);
-    }
+    // For multi-threaded program, start from this function instead of `main`.
 
-    func(cid);
-
-    if (cid == 0) {
-        exit(0);
-    } else {
-        while (1) {}
-    }
+    // Call custom function.
+    func(cid, nc);
+    // Decide on returncode.
+    int ret = 0;
+    
+    // Let one thread call `exit`.
+    if (cid != 0) { while (1) {} }
+    exit(ret);
 }
 
-
 int main() {
-    printf("main: multi-hart should not run this function.\n");
+    // `main` is called after `thread_entry` return in `_init` (syscall.c).
+    // But only single-threaded program should run and return from `main`.
+
+    // Guard on other threads that fall back in `main`.
+    if (get_hart_id() != 0) { while (1) {} }
     return 0;
 }

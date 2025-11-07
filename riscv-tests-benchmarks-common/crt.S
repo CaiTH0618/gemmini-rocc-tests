@@ -119,6 +119,11 @@ _start:
   la  tp, _end + 63
   and tp, tp, -64
 
+#ifndef NUM_CORES
+#warning `NUM_CORES` is not set explicitly. Default to 1.
+#define NUM_CORES 1
+#endif 
+
   # get core id
   csrr a0, mhartid
   li a1, NUM_CORES

@@ -86,6 +86,12 @@ BENCH_COMMON = $(abs_top_srcdir)/riscv-tests-benchmarks-common
 
 GEMMINI_HEADERS = $(abs_top_srcdir)/include/gemmini.h $(abs_top_srcdir)/include/gemmini_params.h $(abs_top_srcdir)/include/gemmini_testutils.h
 
+# CTH: set env var `GEMMINI_NUM_CPU_CORES` according to the Chipyard config
+ifeq ($(strip $(GEMMINI_NUM_CPU_CORES)),)
+	$(warning env var `GEMMINI_NUM_CPU_CORES` not set; defaulting to 1)
+	GEMMINI_NUM_CPU_CORES := 1
+endif
+
 CFLAGS := $(CFLAGS) \
 	-DPREALLOCATE=1 \
 	-DMULTITHREAD=1 \
@@ -105,8 +111,7 @@ CFLAGS := $(CFLAGS) \
 	-I$(BENCH_COMMON) \
 	-DID_STRING=$(ID_STRING) \
 	-DPRINT_TILE=0 \
-	-DNUM_CORES=4 \
-# TODO: NUM_CORES
+	-DNUM_CORES=$(GEMMINI_NUM_CPU_CORES) \
 
 CFLAGS_PK := \
 	$(CFLAGS) \
