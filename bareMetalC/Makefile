@@ -4,6 +4,7 @@ tests = \
 	template \
 	spad \
 	bw_test \
+	bw_test_gemmini \
 	latency_test \
 	mt_hello \
 # 	mvin_mvout \
@@ -128,7 +129,7 @@ CFLAGS_BAREMETAL := \
 
 all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
-vpath %.c $(src_dir)
+vpath %.c $(src_dir) $(src_dir)/learn-gemmini
 
 %-baremetal: %.c $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \

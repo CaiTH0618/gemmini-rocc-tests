@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdalign.h>
+#include <string.h>
 #ifndef BAREMETAL
 #include <sys/mman.h>
 #endif
@@ -93,31 +94,34 @@ uint64_t bw_test(uint64_t addr_base, uint64_t addr_ceil) {
     uint64_t total_interations = warmup_iterations + test_iterations;
     for (uint32_t iter = 0; iter < total_interations; ++iter) {
         printf("bw_test: iteration %lu/%lu\n", iter + 1, total_interations);
-        fence_rw_rw();
-        uint64_t copy_start = read_cycles();
-
         uint64_t *src = (uint64_t *)buf1;
         uint64_t *dst = (uint64_t *)buf2;
         uint64_t *src_end = src + word_count;
 
-        while (src + 8 <= src_end) {
-            dst[0] = src[0];
-            dst[1] = src[1];
-            dst[2] = src[2];
-            dst[3] = src[3];
-            dst[4] = src[4];
-            dst[5] = src[5];
-            dst[6] = src[6];
-            dst[7] = src[7];
-            src += 8;
-            dst += 8;
-        }
-        for (; src < src_end; ++src, ++dst) {
-            *dst = *src;
-        }
+        fence_rw_rw();
+        uint64_t copy_start = read_cycles();
+
+        memcpy(dst, src, buffer_bytes);
+
+        // while (src + 8 <= src_end) {
+        //     dst[0] = src[0];
+        //     dst[1] = src[1];
+        //     dst[2] = src[2];
+        //     dst[3] = src[3];
+        //     dst[4] = src[4];
+        //     dst[5] = src[5];
+        //     dst[6] = src[6];
+        //     dst[7] = src[7];
+        //     src += 8;
+        //     dst += 8;
+        // }
+        // for (; src < src_end; ++src, ++dst) {
+        //     *dst = *src;
+        // }
 
         fence_rw_rw();
         uint64_t copy_end = read_cycles();
+        
         uint64_t cycles = copy_end - copy_start;
         if (iter >= warmup_iterations) {
             total_cycles += cycles;
