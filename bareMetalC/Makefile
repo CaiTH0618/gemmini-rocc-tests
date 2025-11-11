@@ -5,6 +5,7 @@ tests = \
 	spad \
 	bw_test \
 	bw_test_gemmini \
+	bw_test_mt_gemmini \
 	latency_test \
 	mt_hello \
 # 	mvin_mvout \
