@@ -45,10 +45,10 @@ static uint64_t mem_buf_head_addr = (uint64_t) mem_buf;
 // >>>> Configuration Region >>>>
 
 // Whether to run a single test or multiple tests
-// #define DO_MULTIPLE_TEST
+#define DO_MULTIPLE_TEST
 
 // Whether to interleave `mvin` and `mvout`.
-#define DO_INTERLEAVED_MVIN_MVOUT
+// #define DO_INTERLEAVED_MVIN_MVOUT
 
 // Whether to init buffers and check results
 // #define DO_CHECK
@@ -67,6 +67,7 @@ static uint64_t buf_base = 0;
 static uint64_t bytes = 256 * 1024;
 
 // Iterations
+// static const uint64_t warmup_iterations = 0;
 static const uint64_t warmup_iterations = 1;
 // static const uint64_t test_iterations = 1;
 static const uint64_t test_iterations = 3;
@@ -318,7 +319,6 @@ int test(int cid, int nc) {
     if (test_iterations > 0) {
         uint64_t avg_bw_scaled = sum_bw_scaled / test_iterations;
         if (cid == 0) {
-            printf("\n");
             printf("avg bandwidth: %lu*0.001 bytes/cyc\n", avg_bw_scaled);
         }
     }
@@ -333,18 +333,22 @@ int hart_main(int cid, int nc) {
     test(cid, nc);
 #else
     // Call multiple tests with different params.
+    uint64_t nc_list[] = {4, 2, 1};
     uint64_t bytes_list[] = {1024, 4 * 1024, 16 * 1024, 64 * 1024, 256 * 1024};
-    // uint64_t addr_list[] = {MEM_ADDR_BASE, MBUS_SPAD_ADDR_BASE, SBUS_SPAD_ADDR_BASE};
-    uint64_t addr_list[] = {MBUS_SPAD_ADDR_BASE, SBUS_SPAD_ADDR_BASE};
-    for (int i = 0; i < (sizeof(bytes_list) / sizeof(uint64_t)); i++) {
-        bytes = bytes_list[i];
-        for (int j = 0; j < (sizeof(addr_list) / sizeof(uint64_t)); j++) {
-            buf_base = addr_list[j];
-            if (cid == 0) {
-                printf("\n(%d, %d), bytes=%lu, addr=%lx\n", 
-                    i, j, bytes, buf_base);
+    uint64_t addr_list[] = {MEM_ADDR_BASE, MBUS_SPAD_ADDR_BASE, SBUS_SPAD_ADDR_BASE};
+    for (int k = 0; k < (sizeof(nc_list) / sizeof(uint64_t)); k++) {
+        uint64_t nc_ = nc_list[k];
+        if (cid >= nc_) { while (true) {} }
+        for (int i = 0; i < (sizeof(bytes_list) / sizeof(uint64_t)); i++) {
+            bytes = bytes_list[i];
+            for (int j = 0; j < (sizeof(addr_list) / sizeof(uint64_t)); j++) {
+                buf_base = addr_list[j];
+                if (cid == 0) {
+                    printf("\n(%d, %d), bytes=%lu, addr=%lx\n", 
+                        i, j, bytes, buf_base);
+                }
+                test(cid, nc_);
             }
-            test(cid, nc);
         }
     }
 #endif
