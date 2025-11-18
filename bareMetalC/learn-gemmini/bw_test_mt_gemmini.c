@@ -20,7 +20,11 @@
 #endif 
 
 
-#define ADDR_SIZE 0x00100000U
+#define ADDR_SIZE (1024 * 1024)
+
+#define SHARED_SPAD_GLOBAL_ADDR_BASE 0xF0000000U
+#define SHARED_SPAD_LOCAL_SIZE ADDR_SIZE
+#define SHARED_SPAD_LOCAL_ADDR_BASE(i) (SHARED_SPAD_GLOBAL_ADDR_BASE + SHARED_SPAD_LOCAL_SIZE * i)
 
 #define SBUS_SPAD_ADDR_BASE 0xC0000000U
 #define SBUS_SPAD_ADDR_SIZE ADDR_SIZE
@@ -54,12 +58,15 @@ static uint64_t mem_buf_head_addr = (uint64_t) mem_buf;
 // #define DO_CHECK
 
 // Select address region: memory/mbus/sbus
-// #define ADDR_BASE MEM_ADDR_BASE
+#define ADDR_BASE MEM_ADDR_BASE
 // #define ADDR_BASE MBUS_SPAD_ADDR_BASE
-#define ADDR_BASE SBUS_SPAD_ADDR_BASE
-static uint64_t buf_base = 0;
+// #define ADDR_BASE SBUS_SPAD_ADDR_BASE
+// #define ADDR_BASE SHARED_SPAD_LOCAL_ADDR_BASE(0)
+// #define ADDR_BASE SHARED_SPAD_LOCAL_ADDR_BASE(1)
+static uint64_t buf_base = 0;  // This will be overridden below.
 
 // Data bytes to move (Default spad capacity of gemmini is 256KB)
+// static uint64_t bytes = 256;
 // static uint64_t bytes = 1024;
 // static uint64_t bytes = 4 * 1024;
 // static uint64_t bytes = 16 * 1024;
@@ -69,8 +76,8 @@ static uint64_t bytes = 256 * 1024;
 // Iterations
 // static const uint64_t warmup_iterations = 0;
 static const uint64_t warmup_iterations = 1;
-// static const uint64_t test_iterations = 1;
-static const uint64_t test_iterations = 3;
+static const uint64_t test_iterations = 1;
+// static const uint64_t test_iterations = 3;
 
 // Round per iteration
 static const uint64_t rounds_per_iter = 1;
@@ -208,10 +215,10 @@ void mem_reset(elem_t* addr, uint64_t bytes) {
     }
 }
 
-void mem_init(elem_t* addr, uint64_t bytes, int cid) {
+void mem_init(elem_t* addr, uint64_t bytes, int x) {
     size_t size = bytes / GEMMINI_WORD_BYTES;
     for (size_t i = 0; i < size; i++) {
-        addr[i] = (elem_t) (((uint32_t) 0x5A5A5A5A) ^ (uint32_t) i ^ (uint32_t) cid);
+        addr[i] = (elem_t) (((uint32_t) 0x5A5A5A5A) ^ (uint32_t) i ^ (uint32_t) x);
     }
 }
 
@@ -267,7 +274,7 @@ int test(int cid, int nc) {
         if (cid == 0) {
             printf("\tmem_init ...\n");
         }
-        mem_init(buf_in, hart_bytes, cid);
+        mem_init(buf_in, hart_bytes, (cid + 1) * (i + 2));
         if (cid == 0) {
             printf("\tmem_reset ...\n");
         }
@@ -333,9 +340,16 @@ int hart_main(int cid, int nc) {
     test(cid, nc);
 #else
     // Call multiple tests with different params.
-    uint64_t nc_list[] = {4, 2, 1};
-    uint64_t bytes_list[] = {1024, 4 * 1024, 16 * 1024, 64 * 1024, 256 * 1024};
-    uint64_t addr_list[] = {MEM_ADDR_BASE, MBUS_SPAD_ADDR_BASE, SBUS_SPAD_ADDR_BASE};
+    uint64_t nc_list[] = {1};
+    // uint64_t nc_list[] = {4, 2, 1};
+    uint64_t bytes_list[] = {256 * 1024};
+    // uint64_t bytes_list[] = {1024, 4 * 1024, 16 * 1024, 64 * 1024, 256 * 1024};
+    uint64_t addr_list[] = {MEM_ADDR_BASE, MBUS_SPAD_ADDR_BASE, 
+                            SBUS_SPAD_ADDR_BASE, 
+                            SHARED_SPAD_LOCAL_ADDR_BASE(0), 
+                            SHARED_SPAD_LOCAL_ADDR_BASE(1)};
+    // uint64_t addr_list[] = {SHARED_SPAD_LOCAL_ADDR_BASE(0), 
+    //                         SHARED_SPAD_LOCAL_ADDR_BASE(1)};
     for (int k = 0; k < (sizeof(nc_list) / sizeof(uint64_t)); k++) {
         uint64_t nc_ = nc_list[k];
         if (cid >= nc_) { while (true) {} }
@@ -344,8 +358,8 @@ int hart_main(int cid, int nc) {
             for (int j = 0; j < (sizeof(addr_list) / sizeof(uint64_t)); j++) {
                 buf_base = addr_list[j];
                 if (cid == 0) {
-                    printf("\n(%d, %d), bytes=%lu, addr=%lx\n", 
-                        i, j, bytes, buf_base);
+                    printf("\n(%d, %d, %d), ncores=%lu, bytes=%lu, addr=%lx\n", 
+                        k, i, j, nc_, bytes, buf_base);
                 }
                 test(cid, nc_);
             }

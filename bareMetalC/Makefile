@@ -130,7 +130,7 @@ CFLAGS_BAREMETAL := \
 
 all: $(tests_baremetal) $(tests_linux) $(tests_pk)
 
-vpath %.c $(src_dir) $(src_dir)/learn-gemmini
+vpath %.c $(src_dir) $(src_dir)/learn-gemmini $(src_dir)/original
 
 %-baremetal: %.c $(GEMMINI_HEADERS)
 	$(CC_BAREMETAL) $(CFLAGS_BAREMETAL) $< $(LFLAGS) -o $@ \
