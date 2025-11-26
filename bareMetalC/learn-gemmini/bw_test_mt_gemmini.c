@@ -44,15 +44,13 @@ static uint64_t mem_buf_head_addr = (uint64_t) mem_buf;
 
 #define GEMMINI_WORD_BYTES sizeof(elem_t)
 #define GEMMINI_MIN_TILE_BYTES (DIM * DIM * GEMMINI_WORD_BYTES)
+#define GEMMINI_SPAD_CAPACITY (BANK_NUM * BANK_ROWS * DIM * GEMMINI_WORD_BYTES)
 
 
 // >>>> Configuration Region >>>>
 
 // Whether to run a single test or multiple tests
-#define DO_MULTIPLE_TEST
-
-// Whether to interleave `mvin` and `mvout`.
-// #define DO_INTERLEAVED_MVIN_MVOUT
+// #define DO_MULTIPLE_TEST
 
 // Whether to init buffers and check results
 // #define DO_CHECK
@@ -65,23 +63,32 @@ static uint64_t mem_buf_head_addr = (uint64_t) mem_buf;
 // #define ADDR_BASE SHARED_SPAD_LOCAL_ADDR_BASE(1)
 static uint64_t buf_base = 0;  // This will be overridden below.
 
-// Data bytes to move (Default spad capacity of gemmini is 256KB)
+// Data bytes to move
 // static uint64_t bytes = 256;
 // static uint64_t bytes = 1024;
 // static uint64_t bytes = 4 * 1024;
 // static uint64_t bytes = 16 * 1024;
 // static uint64_t bytes = 64 * 1024;
-static uint64_t bytes = 256 * 1024;
+// static uint64_t bytes = 256 * 1024;
+static uint64_t bytes = 512 * 1024;
 
 // Iterations
 // static const uint64_t warmup_iterations = 0;
 static const uint64_t warmup_iterations = 1;
+// static const uint64_t warmup_iterations = 3;
 static const uint64_t test_iterations = 1;
 // static const uint64_t test_iterations = 3;
 
 // Round per iteration
 static const uint64_t rounds_per_iter = 1;
 // static const uint64_t rounds_per_iter = 5;
+
+// The size of spad in gemmini that used for mvin and mvout
+// static const uint64_t spad_fifo_bytes = 1 * 1024;
+static const uint64_t spad_fifo_bytes = 4 * 1024;
+// static const uint64_t spad_fifo_bytes = 16 * 1024;
+// static const uint64_t spad_fifo_bytes = 64 * 1024;
+// static const uint64_t spad_fifo_bytes = GEMMINI_SPAD_CAPACITY;
 
 // <<<< Configuration Region <<<<
 
@@ -163,47 +170,25 @@ static inline void mvout(elem_t* mem_addr, uint64_t spad_addr, uint64_t bytes) {
     }
 }
 
-static void interleaved_mvin_mvout(
-    elem_t* mem_addr_mvin, 
-    elem_t* mem_addr_mvout, 
-    uint64_t spad_addr, 
-    uint64_t bytes
-) {
-    uint64_t mem_addr_mvin_base = (uint64_t) mem_addr_mvin;
-    uint64_t mem_addr_mvout_base = (uint64_t) mem_addr_mvout;
-    uint64_t mem_addr_mvin_ceil = mem_addr_mvin_base + bytes;
+static inline void mvin_mvout(elem_t* in, elem_t* out, uint64_t bytes,
+                              uint64_t fifo_bytes) {
+    // This function constraint the usage of Gemmini private scratchpad to 
+    // `fifo_bytes` during mvin and mvout.
 
-    if (DIM * GEMMINI_WORD_BYTES <= MAX_BYTES) {
-        uint64_t cols = MAX_BYTES / GEMMINI_WORD_BYTES;
-        uint64_t stride = MAX_BYTES;
+    uint64_t mem_in_addr_base = (uint64_t) in;
+    uint64_t mem_out_addr_base = (uint64_t) out;
+    uint64_t mem_offset = 0;
 
-        // printf("config_ld(stride=%lu)\n", stride);
-        gemmini_config_ld(stride);
-        gemmini_config_st(stride);
-
-        uint64_t maddr_mvin = mem_addr_mvin_base;
-        uint64_t maddr_mvout = mem_addr_mvout_base;
-        uint64_t saddr = spad_addr;
-        while (maddr_mvin < mem_addr_mvin_ceil) {
-            uint64_t rows = 0;
-            if ((maddr_mvin + MAX_BYTES * DIM) <= mem_addr_mvin_ceil) {
-                rows = DIM;
-            } else {
-                assert((mem_addr_mvin_ceil - maddr_mvin) % MAX_BYTES == 0);
-                rows = (mem_addr_mvin_ceil - maddr_mvin) / MAX_BYTES;
-            }
-
-            gemmini_extended_mvin(maddr_mvin, saddr, cols, rows);
-            gemmini_extended_mvout(maddr_mvout, saddr, cols, rows);
-
-            maddr_mvin += MAX_BYTES * rows;
-            maddr_mvout += MAX_BYTES * rows;
-            saddr += MAX_BYTES * rows / (DIM * GEMMINI_WORD_BYTES);
+    while (mem_offset < bytes) {
+        uint64_t mv_bytes = 0;
+        if (mem_offset + fifo_bytes < bytes) {
+            mv_bytes = fifo_bytes;
+        } else {
+            mv_bytes = bytes - mem_offset;
         }
-        assert(maddr_mvin == mem_addr_mvin_ceil);
-    } else {
-        // TODO: Currently not support for bigger array.
-        assert(false);
+        mvin((elem_t*) (mem_in_addr_base + mem_offset), 0, mv_bytes);
+        mvout((elem_t*) (mem_out_addr_base + mem_offset), 0, mv_bytes);
+        mem_offset += mv_bytes;
     }
 }
 
@@ -242,9 +227,12 @@ int test(int cid, int nc) {
     }
 #endif
 
-    assert(bytes <= ADDR_SIZE);
+    assert(bytes > 0);
+    assert(bytes * 2 <= ADDR_SIZE);
     assert((bytes % GEMMINI_MIN_TILE_BYTES) == 0);
     assert(bytes % nc == 0);
+    assert(spad_fifo_bytes >= (MAX_BYTES * DIM));
+    assert(spad_fifo_bytes <= GEMMINI_SPAD_CAPACITY);
     uint64_t hart_bytes = bytes / nc;
 
     elem_t* buf_in = (elem_t*) (buf_base + hart_bytes * cid);
@@ -287,12 +275,7 @@ int test(int cid, int nc) {
         barrier(nc);
         uint64_t t_start = read_cycles();
         for (int round = 0; round < rounds_per_iter; round++) {
-#ifdef DO_INTERLEAVED_MVIN_MVOUT
-            interleaved_mvin_mvout(buf_in, buf_out, 0, hart_bytes);
-#else
-            mvin(buf_in, 0, hart_bytes);
-            mvout(buf_out, 0, hart_bytes);
-#endif
+            mvin_mvout(buf_in, buf_out, hart_bytes, spad_fifo_bytes);
         }
         gemmini_fence();
         barrier(nc);
