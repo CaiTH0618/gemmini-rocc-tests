@@ -36,10 +36,9 @@ int main() {
   size_t Out_sp_addr = DIM;
   size_t Identity_sp_addr = 2*DIM;
 
-  In[0][0] = 10;
-  In[0][1] = 20;
-  In[0][2] = 30;
-  In[0][3] = 40;
+  for (size_t i = 0; i < DIM; i++)
+    for (size_t j = 0; j < DIM; j++)
+      In[i][j] = (i + j * 2) % 100;
 
   // printf("Move \"In\" matrix from main memory into Gemmini's scratchpad\n");
   gemmini_config_ld(DIM * sizeof(elem_t));

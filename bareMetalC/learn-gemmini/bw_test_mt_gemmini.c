@@ -314,10 +314,10 @@ int test(int cid, int nc) {
         }
 #endif
 
-        // if (cid == 0) {
-        //     printf("\t%lu cycles\n", cyc);
-        //     printf("\t%lu*0.001 bytes/cyc\n", bw_scaled);
-        // }
+        if (cid == 0) {
+            // printf("\t%lu cycles\n", cyc);
+            printf("\t%lu*0.001 bytes/cyc\n", bw_scaled);
+        }
         if (i >= warmup_iterations) {
             sum_bw_scaled += bw_scaled;
         }
@@ -343,7 +343,10 @@ int hart_main(int cid, int nc) {
     uint64_t nc_list[] = {1};
     // uint64_t nc_list[] = {4, 2, 1};
     uint64_t bytes_list[] = {256 * 1024};
-    // uint64_t bytes_list[] = {1024, 4 * 1024, 16 * 1024, 64 * 1024, 256 * 1024};
+    // uint64_t bytes_list[] = {4 * 1024, 16 * 1024, 64 * 1024, 256 * 1024};
+    // uint64_t bytes_list[] = {4 * 1024, 8 * 1024, 16 * 1024, 32 * 1024, 
+    //                          64 * 1024, 128 * 1024, 256 * 1024};
+    // uint64_t addr_list[] = {MEM_ADDR_BASE}; 
     uint64_t addr_list[] = {MEM_ADDR_BASE, MBUS_SPAD_ADDR_BASE, 
                             SBUS_SPAD_ADDR_BASE, 
                             SHARED_SPAD_LOCAL_ADDR_BASE(0), 
