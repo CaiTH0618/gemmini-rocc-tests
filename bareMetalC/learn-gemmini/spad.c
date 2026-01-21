@@ -7,8 +7,8 @@
 #include <sys/mman.h>
 #endif
 
-// #define SPAD_ADDR_BASE 0x08000000U  // mbus scratchpad in `GemminiLearningConfigWithScratchpad`
-#define SPAD_ADDR_BASE 0xC0000000U  // sbus scratchpad in `GemminiLearningConfigWithScratchpad`
+// #define SPAD_ADDR_BASE 0x60000000U  // mbus scratchpad in `GemminiLearningConfigWithScratchpad`
+#define SPAD_ADDR_BASE 0x70000000U  // sbus scratchpad in `GemminiLearningConfigWithScratchpad`
 #define SPAD_ADDR_SIZE 0x00100000U  // Scratchpad size in `GemminiLearningConfigWithScratchpad`
 #define SPAD_ADDR_CEIL (SPAD_ADDR_BASE + SPAD_ADDR_SIZE)
 

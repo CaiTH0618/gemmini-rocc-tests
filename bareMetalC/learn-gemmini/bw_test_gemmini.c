@@ -15,11 +15,11 @@
 
 #define ADDR_SIZE 0x00100000U
 
-#define SBUS_SPAD_ADDR_BASE 0xC0000000U
+#define SBUS_SPAD_ADDR_BASE 0x70000000U
 #define SBUS_SPAD_ADDR_SIZE ADDR_SIZE
 #define SBUS_SPAD_ADDR_CEIL (SBUS_SPAD_ADDR_BASE + SBUS_SPAD_ADDR_SIZE)
 
-#define MBUS_SPAD_ADDR_BASE 0x08000000U
+#define MBUS_SPAD_ADDR_BASE 0x60000000U
 #define MBUS_SPAD_ADDR_SIZE ADDR_SIZE
 #define MBUS_SPAD_ADDR_CEIL (MBUS_SPAD_ADDR_BASE + MBUS_SPAD_ADDR_SIZE)
 
@@ -96,7 +96,7 @@ static void mvin(elem_t* mem_addr, uint64_t spad_addr, uint64_t bytes) {
         // printf("config_ld(stride=%lu)\n", stride);
 #ifdef AOT_GEMMINI_INSTRUCTION_GENERATION
         gemmini_config_ld_stride = stride;
-#else
+#else 
         gemmini_config_ld(stride);
 #endif
 
