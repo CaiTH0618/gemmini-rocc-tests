@@ -8,6 +8,7 @@ tests = \
 	bw_test_mt_gemmini \
 	latency_test \
 	mt_hello \
+	test_saturn \
 	mvin_mvout \
 	mvin_mvout_zeros \
 	mvin_mvout_stride \
@@ -104,7 +105,7 @@ CFLAGS := $(CFLAGS) \
 	-fno-common \
 	-fno-builtin-printf \
 	-fno-tree-loop-distribute-patterns \
-	-march=rv64gc -Wa,-march=rv64gc \
+	-march=rv64gcv -Wa,-march=rv64gcv \
 	-lm \
 	-lgcc \
 	-I$(abs_top_srcdir)/riscv-tests \
